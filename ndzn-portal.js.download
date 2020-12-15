@@ -1,0 +1,122 @@
+
+let $images = $('.ndzn-js--img');
+let preloadIndex = {};
+
+$images.each(function(){
+	let url = $(this).data('url');
+	let id = makeId(6);
+	let preloader = $('#ndzn-preloader').append(`<img id="${id}" src="${url}" />`);
+	preloadIndex[id] = {el:this, id, url, preloader};
+});
+
+$('#ndzn-preloader').imagesLoaded().progress(function(instance, image){
+
+	if (image.isLoaded) {
+		let id = $(image.img).attr('id');
+		let data = preloadIndex[id];
+		let el = $(data.el);
+		if ($(data.el).hasClass('_appendEl')) {
+			el = el.append(`<img class="ndzn-js--preloadedChild" src="${data.url}" alt="Image" />`);
+		} else {
+			el.css('background-image', `url(${data.url})`);
+		}
+		el.addClass('loaded').attr('data-preload-id', id);
+	}
+
+}).always(function(){
+
+	$('body').addClass('loaded');
+
+});
+
+let SERVER_IP = 'pvp.desteria.com';
+window.ndznPlayercount = 0;
+
+$(function(){
+
+	let refresh = function() {
+		if (window.ndznPlayercount === -1) return;
+
+		$.getJSON('https://mcapi.us/server/status?ip='+SERVER_IP, function(json) {
+			if (json.status === 'success' && json.online===true) {
+				$('.ndzn-js--playercount').countTo({
+					from: window.ndznPlayercount,
+					to: json.players.now
+				});
+				window.ndznPlayercount = json.players.now; 
+			}
+			// block future requests if server offline
+			else window.ndznPlayercount = -1;
+		});
+	};
+
+	if ($('.ndzn-js--playercount').length && SERVER_IP.length) {
+		setTimeout(refresh, 20000);
+		refresh();		
+	}
+
+	if ($('.ndzn-js--copyip').length) {
+	    new ClipboardJS('.ndzn-js--copyip', {
+	    	text: () => SERVER_IP
+	    }).on('success', e => {
+	    	swal(
+	    		'Copied to Clipboard',
+	    		'We hope to see you online soon',
+	    		'success'
+	    	)
+	    });
+	}
+
+});
+
+function makeId(length) {
+	var text = "";
+	var possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+	for (var i = 0; i < length; i++)
+		text += possible.charAt(Math.floor(Math.random() * possible.length));
+
+	return text;
+}
+
+function makeRandInt(min, max) {
+  return Math.floor(Math.random() * (max - min) ) + min;
+}
+
+window.ndznParticles = {}; 
+window.ndznLastParticleSize = 0;
+
+setInterval(function(){
+	let particle = particleFactory();
+	window.ndznParticles[particle.id] = particle;
+	let el = $(particle.el).appendTo($('.ndzn-js--particles'));
+	el.css({
+		left: Math.random() * ($('.ndzn-js--particles').width() - el.width()),
+		top: Math.random() * ($('.ndzn-js--particles').height() - el.height() + 30)
+	});
+}, 300);
+
+function particleFactory(size=makeRandInt(1,6)) {
+	let id = makeId(6);
+	let el = `<div id="${id}" class="p size${size}"></div>`;
+	let del = setTimeout(()=>particleRemove(id), 5000);
+	return {
+		id, size, el, del
+	};
+}
+
+function particleRemove(id) {
+	let index = Object.keys(window.ndznParticles).indexOf(id);
+	if (index > -1) {
+		delete window.ndznParticles[id];
+		$(`.ndzn-js--particles .p#${id}`).remove();
+		return true;
+	}
+	else return false;
+}
+
+$(function(){
+	if ($('style.darkreader[media="screen"]').length) {
+		$('body').addClass('ndzn-is-darkreader');
+	}
+});
